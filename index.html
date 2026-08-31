@@ -75,6 +75,14 @@ html, body {
 .tag-must { color: #8fbf6f; border-color: #8fbf6f; }
 .tag-try { color: var(--text-3); border-color: var(--text-3); }
 
+.thumb {
+  width: 40px; height: 40px; flex-shrink: 0;
+  background-color: var(--secondary-bg);
+  border: 1px solid;
+  border-color: var(--border-dark) var(--border-light) var(--border-light) var(--border-dark);
+  object-fit: cover; display: block;
+}
+
 .now-card { display: flex; align-items: flex-start; gap: 8px; padding: 8px; margin-bottom: 8px; }
 .now-card .info { flex: 1; min-width: 0; }
 .now-card .period { font-size: 10px; line-height: 1; color: var(--text-3); margin-bottom: 2px; }
@@ -224,8 +232,24 @@ html, body {
   }
   function addGame(title, period, categories, platform) {
     if (!title.trim()) return;
-    games.push({ id: Date.now() + Math.random(), title: title.trim(), period: period.trim(), categories: categories.length ? categories : ['me'], platform: platform || '', status: 'queued' });
+    const g = { id: Date.now() + Math.random(), title: title.trim(), period: period.trim(), categories: categories.length ? categories : ['me'], platform: platform || '', status: 'queued' };
+    games.push(g);
     save(); render();
+    fetchThumb(g.id, g.title);
+  }
+  async function fetchThumb(id, title) {
+    try {
+      const searchUrl = 'https://en.wikipedia.org/w/api.php?origin=*&action=query&list=search&format=json&srlimit=1&srsearch=' + encodeURIComponent(title + ' video game');
+      const searchRes = await fetch(searchUrl).then(r => r.json());
+      const hit = searchRes && searchRes.query && searchRes.query.search && searchRes.query.search[0];
+      if (!hit) return;
+      const summaryUrl = 'https://en.wikipedia.org/api/rest_v1/page/summary/' + encodeURIComponent(hit.title.replace(/ /g, '_'));
+      const summary = await fetch(summaryUrl).then(r => r.json());
+      const thumb = summary && summary.thumbnail && summary.thumbnail.source;
+      if (!thumb) return;
+      const g = games.find(g => g.id === id);
+      if (g) { g.thumb = thumb; save(); render(); }
+    } catch (e) { console.error('Thumbnail fetch failed', e); }
   }
   function setStatus(id, status) {
     const g = games.find(g => g.id === id);
@@ -269,6 +293,7 @@ html, body {
     } else {
       playing.forEach(g => {
         html += '<div class="win now-card">' +
+          (g.thumb ? '<img class="thumb" src="' + esc(g.thumb) + '" alt="" onerror="this.remove()" />' : '') +
           '<div class="info">' +
           (metaLine(g) ? '<div class="period">' + metaLine(g) + '</div>' : '') +
           '<div class="title">' + esc(g.title) + '</div>' +
@@ -288,6 +313,7 @@ html, body {
       queued.forEach((g, i) => {
         html += '<div class="win item">' +
           '<div class="num">' + (i + 1) + '</div>' +
+          (g.thumb ? '<img class="thumb" src="' + esc(g.thumb) + '" alt="" onerror="this.remove()" />' : '') +
           '<div class="info">' +
           (metaLine(g) ? '<div class="period">' + metaLine(g) + '</div>' : '') +
           '<div class="name">' + esc(g.title) + '</div>' + catTags(g.categories) + '</div>' +
