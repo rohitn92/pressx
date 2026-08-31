@@ -704,10 +704,16 @@ html, body {
         render();
       } catch (e) { console.error('Save sync settings failed', e); }
     };
+    function persistSyncInputs() {
+      try {
+        localStorage.setItem(JSONBIN_KEY_STORAGE, jsonbinKeyInput.value.trim());
+        localStorage.setItem(JSONBIN_ID_STORAGE, jsonbinIdInput.value.trim());
+      } catch (e) { console.error('Save sync settings failed', e); }
+    }
     const pushBtn = document.getElementById('push-btn');
-    if (pushBtn) pushBtn.onclick = () => pushToCloud();
+    if (pushBtn) pushBtn.onclick = () => { persistSyncInputs(); pushToCloud(); };
     const pullBtn = document.getElementById('pull-btn');
-    if (pullBtn) pullBtn.onclick = () => pullFromCloud();
+    if (pullBtn) pullBtn.onclick = () => { persistSyncInputs(); pullFromCloud(); };
   }
 
   const thumbFileInput = document.getElementById('thumb-file');
