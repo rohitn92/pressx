@@ -38,6 +38,19 @@ html, body {
   line-height: 1.5;
 }
 #root { max-width: 480px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) 8px 40px; }
+@media (min-width: 700px) {
+  #root { max-width: 920px; padding-left: 16px; padding-right: 16px; }
+}
+@media (min-width: 1100px) {
+  #root { max-width: 1280px; }
+}
+
+.section-grid { display: flex; flex-direction: column; }
+@media (min-width: 700px) {
+  .section-grid { flex-flow: row wrap; gap: 8px; align-items: flex-start; }
+  .section-grid > .win { flex: 1 1 380px; margin-bottom: 0; }
+  .form-panel { max-width: 480px; }
+}
 
 .app-title { font-size: 20px; font-weight: 700; color: var(--accent); letter-spacing: 0.02em; margin: 0 0 12px 4px; }
 
@@ -457,6 +470,7 @@ html, body {
     if (playing.length === 0) {
       html += '<div class="win"><div class="content empty">Nothing active. Start something from the queue below.</div></div>';
     } else {
+      html += '<div class="section-grid">';
       playing.forEach(g => {
         html += '<div class="win now-card">' +
           thumbHtml(g) +
@@ -470,12 +484,14 @@ html, body {
           '<button class="cs-btn mini icon-btn" data-act="requeue" data-id="' + g.id + '" title="Back to queue" aria-label="Back to queue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg></button>' +
           '</div></div>';
       });
+      html += '</div>';
     }
 
     html += sectionLabel('Queue', queued.length, queued);
     if (queued.length === 0) {
       html += '<div class="win"><div class="content empty">Queue\'s empty. Add something below.</div></div>';
     } else {
+      html += '<div class="section-grid">';
       queued.forEach((g, i) => {
         html += '<div class="win item">' +
           '<div class="num">' + (i + 1) + '</div>' +
@@ -490,9 +506,10 @@ html, body {
           '<button class="cs-btn mini" data-act="del" data-id="' + g.id + '">&times;</button>' +
           '</div></div>';
       });
+      html += '</div>';
     }
 
-    html += '<div class="win"><div class="content" id="add-panel">' +
+    html += '<div class="win form-panel"><div class="content" id="add-panel">' +
       '<div class="add-label">Add a game</div>' +
       '<input type="text" class="cs-input" id="in-title" placeholder="Title" />' +
       '<input type="text" class="cs-input" id="in-period" placeholder="Period (e.g. September, Month 3, Q1)" />' +
@@ -519,7 +536,7 @@ html, body {
       html += '</div>';
     }
 
-    html += '<div class="win"><div class="content" id="settings-panel">' +
+    html += '<div class="win form-panel"><div class="content" id="settings-panel">' +
       '<div class="add-label">Settings</div>' +
       '<div class="platform-meta">RAWG API key (for completion-time lookup) &mdash; free key at rawg.io/apidocs</div>' +
       '<input type="text" class="cs-input" id="in-rawg-key" placeholder="RAWG API key" value="' + esc(getRawgKey()) + '" />' +
