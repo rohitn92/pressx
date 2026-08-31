@@ -235,6 +235,8 @@ html, body {
 (function() {
   const KEY = 'backlog-queue-v5';
   const RAWG_KEY_STORAGE = 'backlog-rawg-key';
+  const JSONBIN_KEY_STORAGE = 'backlog-jsonbin-key';
+  const JSONBIN_ID_STORAGE = 'backlog-jsonbin-id';
   const CATS = {
     me: { label: 'For me', tag: 'tag-me' },
     learn: { label: 'Learning', tag: 'tag-learn' },
@@ -256,6 +258,8 @@ html, body {
   let editingTimeId = null;
   let editingPeriodId = null;
   let pendingMatch = null;
+  let syncing = false;
+  let syncStatus = '';
 
   function load() {
     try {
@@ -294,6 +298,66 @@ html, body {
   function getRawgKey() {
     try { return (localStorage.getItem(RAWG_KEY_STORAGE) || '').trim(); }
     catch (e) { return ''; }
+  }
+  function getJsonbinKey() {
+    try { return (localStorage.getItem(JSONBIN_KEY_STORAGE) || '').trim(); }
+    catch (e) { return ''; }
+  }
+  function getJsonbinId() {
+    try { return (localStorage.getItem(JSONBIN_ID_STORAGE) || '').trim(); }
+    catch (e) { return ''; }
+  }
+  async function pushToCloud() {
+    const apiKey = getJsonbinKey();
+    if (!apiKey) { syncStatus = 'Enter a JSONBin key first.'; render(); return; }
+    syncing = true; syncStatus = 'Pushing…'; render();
+    try {
+      let binId = getJsonbinId();
+      let res;
+      if (!binId) {
+        res = await fetch('https://api.jsonbin.io/v3/b', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'X-Master-Key': apiKey, 'X-Bin-Name': 'pressx-backlog' },
+          body: JSON.stringify(games)
+        }).then(r => r.json());
+        binId = res && res.metadata && res.metadata.id;
+        if (!binId) throw new Error('No bin id returned');
+        localStorage.setItem(JSONBIN_ID_STORAGE, binId);
+      } else {
+        res = await fetch('https://api.jsonbin.io/v3/b/' + encodeURIComponent(binId), {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json', 'X-Master-Key': apiKey },
+          body: JSON.stringify(games)
+        }).then(r => r.json());
+      }
+      syncStatus = 'Pushed ' + games.length + ' item(s). Bin ID: ' + binId;
+    } catch (e) {
+      console.error('Push failed', e);
+      syncStatus = 'Push failed — check your key and connection.';
+    }
+    syncing = false; render();
+  }
+  async function pullFromCloud() {
+    const apiKey = getJsonbinKey();
+    const binId = getJsonbinId();
+    if (!apiKey || !binId) { syncStatus = 'Enter both a JSONBin key and Bin ID first.'; render(); return; }
+    if (!window.confirm('This replaces every item on this device with the cloud copy. Continue?')) return;
+    syncing = true; syncStatus = 'Pulling…'; render();
+    try {
+      const res = await fetch('https://api.jsonbin.io/v3/b/' + encodeURIComponent(binId) + '/latest', {
+        headers: { 'X-Master-Key': apiKey }
+      }).then(r => r.json());
+      const record = res && res.record;
+      if (!Array.isArray(record)) throw new Error('Malformed cloud data');
+      games = record;
+      games.forEach(g => { if (!Array.isArray(g.categories)) g.categories = g.category ? [g.category] : ['me']; });
+      save();
+      syncStatus = 'Pulled ' + games.length + ' item(s).';
+    } catch (e) {
+      console.error('Pull failed', e);
+      syncStatus = 'Pull failed — check your key, Bin ID, and connection.';
+    }
+    syncing = false; render();
   }
   function normalizeTitle(s) { return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
   async function findPlaytimeMatch(id, title) {
@@ -460,6 +524,17 @@ html, body {
       '<div class="platform-meta">RAWG API key (for completion-time lookup) &mdash; free key at rawg.io/apidocs</div>' +
       '<input type="text" class="cs-input" id="in-rawg-key" placeholder="RAWG API key" value="' + esc(getRawgKey()) + '" />' +
       '<button class="cs-btn accent add-btn" id="save-key-btn">Save key</button>' +
+      '<div class="cs-hr"></div>' +
+      '<div class="add-label">Cloud sync</div>' +
+      '<div class="platform-meta">Free key at jsonbin.io &mdash; enter the same key + Bin ID on every device. Push/Pull are manual, not automatic.</div>' +
+      '<input type="text" class="cs-input" id="in-jsonbin-key" placeholder="JSONBin X-Master-Key" value="' + esc(getJsonbinKey()) + '" />' +
+      '<input type="text" class="cs-input" id="in-jsonbin-id" placeholder="Bin ID (blank = create on first push)" value="' + esc(getJsonbinId()) + '" />' +
+      '<button class="cs-btn accent add-btn" id="save-sync-btn">Save sync settings</button>' +
+      '<div class="modal-actions" style="margin-top:8px;">' +
+      '<button class="cs-btn" id="pull-btn" ' + (syncing ? 'disabled' : '') + '>Pull from cloud</button>' +
+      '<button class="cs-btn accent" id="push-btn" ' + (syncing ? 'disabled' : '') + '>Push to cloud</button>' +
+      '</div>' +
+      (syncStatus ? '<div class="platform-meta" style="margin-top:8px;">' + esc(syncStatus) + '</div>' : '') +
       '</div></div>';
 
     html += '<div id="save-note">Saved on this device</div>';
@@ -618,6 +693,21 @@ html, body {
     if (saveKeyBtn) saveKeyBtn.onclick = () => {
       try { localStorage.setItem(RAWG_KEY_STORAGE, keyInput.value.trim()); } catch (e) { console.error('Save key failed', e); }
     };
+    const saveSyncBtn = document.getElementById('save-sync-btn');
+    const jsonbinKeyInput = document.getElementById('in-jsonbin-key');
+    const jsonbinIdInput = document.getElementById('in-jsonbin-id');
+    if (saveSyncBtn) saveSyncBtn.onclick = () => {
+      try {
+        localStorage.setItem(JSONBIN_KEY_STORAGE, jsonbinKeyInput.value.trim());
+        localStorage.setItem(JSONBIN_ID_STORAGE, jsonbinIdInput.value.trim());
+        syncStatus = 'Sync settings saved.';
+        render();
+      } catch (e) { console.error('Save sync settings failed', e); }
+    };
+    const pushBtn = document.getElementById('push-btn');
+    if (pushBtn) pushBtn.onclick = () => pushToCloud();
+    const pullBtn = document.getElementById('pull-btn');
+    if (pullBtn) pullBtn.onclick = () => pullFromCloud();
   }
 
   const thumbFileInput = document.getElementById('thumb-file');
