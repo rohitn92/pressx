@@ -209,6 +209,7 @@ html, body {
 <script>
 (function() {
   const KEY = 'backlog-queue-v5';
+  const RAWG_KEY_STORAGE = 'backlog-rawg-key';
   const CATS = {
     me: { label: 'For me', tag: 'tag-me' },
     learn: { label: 'Learning', tag: 'tag-learn' },
@@ -227,6 +228,7 @@ html, body {
   let games = [];
   let finishedOpen = false;
   let pickedCats = [];
+  let refreshing = false;
 
   function load() {
     try {
@@ -246,6 +248,7 @@ html, body {
     games.push(g);
     save(); render();
     fetchThumb(g.id, g.title);
+    fetchPlaytime(g.id, g.title);
   }
   async function fetchThumb(id, title) {
     try {
@@ -260,6 +263,35 @@ html, body {
       const g = games.find(g => g.id === id);
       if (g) { g.thumb = thumb; save(); render(); }
     } catch (e) { console.error('Thumbnail fetch failed', e); }
+  }
+  function getRawgKey() {
+    try { return (localStorage.getItem(RAWG_KEY_STORAGE) || '').trim(); }
+    catch (e) { return ''; }
+  }
+  async function fetchPlaytime(id, title) {
+    const apiKey = getRawgKey();
+    if (!apiKey) return;
+    try {
+      const url = 'https://api.rawg.io/api/games?key=' + encodeURIComponent(apiKey) + '&search=' + encodeURIComponent(title) + '&page_size=1';
+      const res = await fetch(url).then(r => r.json());
+      const hit = res && res.results && res.results[0];
+      const hours = hit && hit.playtime;
+      if (!hours) return;
+      const g = games.find(g => g.id === id);
+      if (g) { g.playtime = hours; save(); render(); }
+    } catch (e) { console.error('Playtime fetch failed', e); }
+  }
+  async function refreshAll() {
+    if (refreshing) return;
+    refreshing = true;
+    render();
+    for (const g of games.slice()) {
+      const tasks = [fetchPlaytime(g.id, g.title)];
+      if (!g.thumb) tasks.push(fetchThumb(g.id, g.title));
+      await Promise.all(tasks);
+    }
+    refreshing = false;
+    render();
   }
   function setStatus(id, status) {
     const g = games.find(g => g.id === id);
@@ -282,6 +314,7 @@ html, body {
     const parts = [];
     if (g.period) parts.push(esc(g.period));
     if (g.platform && PLATFORMS[g.platform]) parts.push(PLATFORMS[g.platform]);
+    if (g.playtime) parts.push('~' + g.playtime + 'h');
     return parts.length ? parts.join(' &middot; ') : '';
   }
   function thumbHtml(g) {
@@ -389,6 +422,15 @@ html, body {
       html += '</div>';
     }
 
+    html += '<div class="win"><div class="content" id="settings-panel">' +
+      '<div class="add-label">Settings</div>' +
+      '<div class="platform-meta">RAWG API key (for completion-time lookup) &mdash; free key at rawg.io/apidocs</div>' +
+      '<input type="text" class="cs-input" id="in-rawg-key" placeholder="RAWG API key" value="' + esc(getRawgKey()) + '" />' +
+      '<button class="cs-btn accent add-btn" id="save-key-btn">Save key</button>' +
+      '<div class="cs-hr"></div>' +
+      '<button class="cs-btn add-btn" id="refresh-btn" ' + (refreshing ? 'disabled' : '') + '>' + (refreshing ? 'Refreshing…' : 'Refresh sourced data') + '</button>' +
+      '</div></div>';
+
     html += '<div id="save-note">Saved on this device</div>';
 
     document.getElementById('content').innerHTML = html;
@@ -434,6 +476,13 @@ html, body {
     if (periodInput) periodInput.onkeydown = (e) => { if (e.key === 'Enter') addBtn.click(); };
     const finToggle = document.getElementById('finished-toggle');
     if (finToggle) finToggle.onclick = () => { finishedOpen = !finishedOpen; render(); };
+    const saveKeyBtn = document.getElementById('save-key-btn');
+    const keyInput = document.getElementById('in-rawg-key');
+    if (saveKeyBtn) saveKeyBtn.onclick = () => {
+      try { localStorage.setItem(RAWG_KEY_STORAGE, keyInput.value.trim()); } catch (e) { console.error('Save key failed', e); }
+    };
+    const refreshBtn = document.getElementById('refresh-btn');
+    if (refreshBtn) refreshBtn.onclick = () => { refreshAll(); };
   }
 
   const thumbFileInput = document.getElementById('thumb-file');
