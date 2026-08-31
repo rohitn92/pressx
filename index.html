@@ -208,6 +208,11 @@ html, body {
   color: inherit; background: none; border: 0; padding: 0; font: inherit; font-size: 10px;
 }
 .time-badge:active { color: var(--accent); }
+.period-badge {
+  cursor: pointer; text-decoration: none;
+  color: inherit; background: none; border: 0; padding: 0; font: inherit; font-size: 10px;
+}
+.period-badge:active { color: var(--accent); }
 
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.6);
@@ -249,6 +254,7 @@ html, body {
   let finishedOpen = false;
   let pickedCats = [];
   let editingTimeId = null;
+  let editingPeriodId = null;
   let pendingMatch = null;
 
   function load() {
@@ -324,15 +330,15 @@ html, body {
     save(); render();
   }
   function esc(s) { return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-  function metaLine(g) {
-    const parts = [];
-    if (g.period) parts.push(esc(g.period));
-    if (g.platform && PLATFORMS[g.platform]) parts.push(PLATFORMS[g.platform]);
-    return parts.length ? parts.join(' &middot; ') : '';
+  function periodBadge(g) {
+    const label = g.period ? esc(g.period) : 'Add period';
+    return '<button type="button" class="period-badge" data-act="edit-period" data-id="' + g.id + '" title="Tap to edit period">' + label + '</button>';
   }
   function periodLine(g) {
-    const meta = metaLine(g);
-    return '<div class="period">' + (meta ? meta + ' &middot; ' : '') + timeBadge(g) + '</div>';
+    const parts = [periodBadge(g)];
+    if (g.platform && PLATFORMS[g.platform]) parts.push(PLATFORMS[g.platform]);
+    parts.push(timeBadge(g));
+    return '<div class="period">' + parts.join(' &middot; ') + '</div>';
   }
   function thumbHtml(g) {
     if (g.thumb) return '<button type="button" class="thumb-wrap" data-act="upload" data-id="' + g.id + '" title="Replace cover image" aria-label="Replace cover image"><img class="thumb" src="' + esc(g.thumb) + '" alt="" onerror="this.remove()" /></button>';
@@ -462,10 +468,12 @@ html, body {
 
     const existingOverlay = document.getElementById('time-modal-overlay');
     if (existingOverlay) existingOverlay.remove();
+    const existingPeriodOverlay = document.getElementById('period-modal-overlay');
+    if (existingPeriodOverlay) existingPeriodOverlay.remove();
     const existingMatchOverlay = document.getElementById('match-modal-overlay');
     if (existingMatchOverlay) existingMatchOverlay.remove();
 
-    if (pendingMatch && editingTimeId === null) {
+    if (pendingMatch && editingTimeId === null && editingPeriodId === null) {
       const pm = pendingMatch;
       const g = games.find(g => g.id === pm.id);
       if (g) {
@@ -517,6 +525,31 @@ html, body {
       }
     }
 
+    if (editingPeriodId !== null) {
+      const g = games.find(g => g.id === editingPeriodId);
+      if (g) {
+        html = '<div class="modal-overlay" id="period-modal-overlay">' +
+          '<div class="win modal-box"><div class="content">' +
+          '<div class="add-label">Period &mdash; ' + esc(g.title) + '</div>' +
+          '<input type="text" class="cs-input" id="in-period-value" placeholder="e.g. September, Month 3, Q1" value="' + esc(g.period || '') + '" />' +
+          '<div class="modal-actions">' +
+          '<button class="cs-btn" id="period-cancel-btn">Cancel</button>' +
+          '<button class="cs-btn accent" id="period-save-btn">Save</button>' +
+          '</div></div></div></div>';
+        document.body.insertAdjacentHTML('beforeend', html);
+        const overlay = document.getElementById('period-modal-overlay');
+        const input = document.getElementById('in-period-value');
+        input.focus(); input.select();
+        overlay.onclick = (e) => { if (e.target === overlay) closePeriodModal(); };
+        document.getElementById('period-cancel-btn').onclick = closePeriodModal;
+        document.getElementById('period-save-btn').onclick = () => savePeriodModal(input.value);
+        input.onkeydown = (e) => {
+          if (e.key === 'Enter') savePeriodModal(input.value);
+          else if (e.key === 'Escape') closePeriodModal();
+        };
+      }
+    }
+
     attach();
   }
   function closeTimeModal() { editingTimeId = null; render(); }
@@ -529,6 +562,13 @@ html, body {
       save();
     }
     editingTimeId = null;
+    render();
+  }
+  function closePeriodModal() { editingPeriodId = null; render(); }
+  function savePeriodModal(value) {
+    const g = games.find(g => g.id === editingPeriodId);
+    if (g) { g.period = (value || '').trim(); save(); }
+    editingPeriodId = null;
     render();
   }
 
@@ -544,7 +584,8 @@ html, body {
         else if (act === 'del') remove(id);
         else if (act === 'up') move(id, -1);
         else if (act === 'down') move(id, 1);
-        else if (act === 'edit-time') { editingTimeId = id; render(); }
+        else if (act === 'edit-time') { editingTimeId = id; editingPeriodId = null; pendingMatch = null; render(); }
+        else if (act === 'edit-period') { editingPeriodId = id; editingTimeId = null; pendingMatch = null; render(); }
         else if (act === 'upload') {
           const fileInput = document.getElementById('thumb-file');
           fileInput.dataset.targetId = id;
