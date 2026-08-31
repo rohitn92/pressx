@@ -60,8 +60,10 @@ html, body {
 .section-label {
   font-size: 12px; color: var(--accent); letter-spacing: 0.03em;
   margin: 16px 4px 8px; text-transform: uppercase;
+  display: flex; justify-content: space-between; align-items: baseline; gap: 8px;
 }
 .section-label:first-of-type { margin-top: 0; }
+.section-tally { letter-spacing: normal; }
 
 .empty { color: var(--text-3); font-size: 12px; padding: 8px 4px; text-align: center; }
 
@@ -336,6 +338,12 @@ html, body {
     if (g.thumb) return '<button type="button" class="thumb-wrap" data-act="upload" data-id="' + g.id + '" title="Replace cover image" aria-label="Replace cover image"><img class="thumb" src="' + esc(g.thumb) + '" alt="" onerror="this.remove()" /></button>';
     return '<button type="button" class="thumb-placeholder" data-act="upload" data-id="' + g.id + '" title="Add cover image" aria-label="Add cover image">+</button>';
   }
+  function formatHours(h) { return (Math.round(h * 10) / 10).toString(); }
+  function sectionLabel(label, count, list) {
+    const withTime = list.filter(g => typeof g.playtime === 'number');
+    const tally = withTime.length ? '<span class="section-tally">' + formatHours(withTime.reduce((s, g) => s + g.playtime, 0)) + 'h</span>' : '';
+    return '<div class="section-label"><span>' + label + (count !== null ? ' (' + count + ')' : '') + '</span>' + tally + '</div>';
+  }
   function timeBadge(g) {
     const label = g.playtime ? ('~' + g.playtime + 'h') : 'N/A';
     return '<button type="button" class="time-badge" data-act="edit-time" data-id="' + g.id + '" title="Tap to edit completion time">' + label + '</button>';
@@ -375,7 +383,7 @@ html, body {
     const finished = games.filter(g => g.status === 'finished');
     let html = '';
 
-    html += '<div class="section-label">Now Playing' + (playing.length ? ' (' + playing.length + ')' : '') + '</div>';
+    html += sectionLabel('Now Playing', playing.length ? playing.length : null, playing);
     if (playing.length === 0) {
       html += '<div class="win"><div class="content empty">Nothing active. Start something from the queue below.</div></div>';
     } else {
@@ -394,7 +402,7 @@ html, body {
       });
     }
 
-    html += '<div class="section-label">Queue (' + queued.length + ')</div>';
+    html += sectionLabel('Queue', queued.length, queued);
     if (queued.length === 0) {
       html += '<div class="win"><div class="content empty">Queue\'s empty. Add something below.</div></div>';
     } else {
