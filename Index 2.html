@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Backlog">
+<link rel="apple-touch-icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%234a5942'/%3E%3Crect x='10' y='10' width='80' height='80' fill='none' stroke='%23c4b550' stroke-width='4'/%3E%3Ctext x='50' y='64' font-family='Arial' font-weight='bold' font-size='42' fill='%23c4b550' text-anchor='middle'%3EQ%3C/text%3E%3C/svg%3E">
+<title>Backlog Queue</title>
+<style>
+@font-face {
+  font-family: ArialPixel;
+  src: url("data:font/ttf;base64,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") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+}
+:root {
+  --bg: #4a5942;
+  --secondary-bg: #3e4637;
+  --accent: #c4b550;
+  --secondary-accent: #958831;
+  --text: #dedfd6;
+  --secondary-text: #d8ded3;
+  --text-3: #a0aa95;
+  --border-light: #8c9284;
+  --border-dark: #292c21;
+  --outline: #000;
+}
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
+html, body {
+  background-color: var(--secondary-bg);
+  color: var(--text);
+  font-family: ArialPixel, system-ui, sans-serif;
+  min-height: 100vh;
+  padding-bottom: env(safe-area-inset-bottom);
+  line-height: 1.5;
+}
+#root { max-width: 480px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) 8px 40px; }
+
+.app-title { font-size: 20px; font-weight: 700; color: var(--accent); letter-spacing: 0.02em; margin: 0 0 12px; }
+
+/* window chrome, styled after cs-dialog heading */
+.win {
+  background-color: var(--bg);
+  border: 1px solid;
+  border-color: var(--border-light) var(--border-dark) var(--border-dark) var(--border-light);
+  padding: 4px;
+  margin-bottom: 8px;
+}
+.win .heading {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 4px 8px; margin-bottom: 4px;
+  background: linear-gradient(180deg, #5a6a50, #3e4637);
+}
+.win .heading .text { font-size: 16px; color: white; letter-spacing: 0.02em; }
+.win .content { padding: 8px; }
+
+.section-label {
+  font-size: 12px; color: var(--accent); letter-spacing: 0.03em;
+  margin: 16px 4px 8px; text-transform: uppercase;
+}
+.section-label:first-of-type { margin-top: 0; }
+
+.empty { color: var(--text-3); font-size: 12px; padding: 8px 4px; text-align: center; }
+
+.tag-row { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }
+.tag {
+  font-size: 10px; padding: 4px 8px; border: 1px solid; text-transform: uppercase; line-height: 1;
+}
+.tag-me { color: #c4b550; border-color: #c4b550; }
+.tag-learn { color: #7fb0c9; border-color: #7fb0c9; }
+.tag-content { color: #cf7f7f; border-color: #cf7f7f; }
+.tag-must { color: #8fbf6f; border-color: #8fbf6f; }
+.tag-try { color: var(--text-3); border-color: var(--text-3); }
+
+.now-card { display: flex; align-items: flex-start; gap: 8px; padding: 8px; margin-bottom: 8px; }
+.now-card .info { flex: 1; min-width: 0; }
+.now-card .period { font-size: 10px; line-height: 1; color: var(--text-3); margin-bottom: 2px; }
+.now-card .title { font-size: 16px; line-height: 1.2; color: white; overflow-wrap: anywhere; margin-bottom: 8px; }
+.now-card .tag-row { margin: 0; }
+.row-btns { display: flex; gap: 4px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+
+/* cs16 button */
+.cs-btn {
+  background-color: var(--bg);
+  color: #fff;
+  padding: 4px 8px;
+  font-size: 14px;
+  line-height: 1.2;
+  border: 1px solid;
+  border-color: var(--border-light) var(--border-dark) var(--border-dark) var(--border-light);
+  user-select: none;
+  cursor: pointer;
+}
+.cs-btn:active {
+  border-color: var(--border-dark) var(--border-light) var(--border-light) var(--border-dark);
+}
+.cs-btn.accent { color: var(--accent); }
+.cs-btn.mini { padding: 4px 8px; font-size: 12px; min-width: 28px; text-align: center; }
+.cs-btn.icon-btn { display: inline-flex; align-items: center; justify-content: center; padding: 4px 8px; }
+.cs-btn.icon-btn svg { width: 16px; height: 16px; display: block; color: var(--text); }
+
+.item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px; margin-bottom: 8px;
+}
+.item .num { font-size: 12px; color: var(--text-3); width: 16px; flex-shrink: 0; }
+.item .info { flex: 1; min-width: 0; }
+.item .period { font-size: 10px; line-height: 1; color: var(--text-3); margin-bottom: 2px; }
+.item .name { font-size: 14px; line-height: 1.2; color: white; overflow-wrap: anywhere; margin-bottom: 4px; }
+.item .btns { display: flex; gap: 4px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+
+/* cs16 input */
+.cs-input {
+  outline: 0; border: 1px solid; width: 100%;
+  padding: 8px; font-size: 14px; line-height: 1.2;
+  background-color: var(--secondary-bg);
+  border-color: var(--border-dark) var(--border-light) var(--border-light) var(--border-dark);
+  color: var(--secondary-text);
+  margin-bottom: 8px;
+}
+.cs-input::placeholder { color: var(--text-3); }
+
+.cs-select {
+  outline: 0; border: 1px solid; width: 100%;
+  padding: 8px 24px 8px 8px; font-size: 14px; line-height: 1.2;
+  background-color: var(--secondary-bg);
+  border-color: var(--border-dark) var(--border-light) var(--border-light) var(--border-dark);
+  color: var(--secondary-text);
+  margin-bottom: 8px;
+  -webkit-appearance: none; -moz-appearance: none; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='7' height='4' viewBox='0 0 7 4'%3E%3Cpath d='M0,0 1,0 1,1 0,1 M1,0 2,0 2,1 1,1 M1,1 2,1 2,2 1,2 M2,1 3,1 3,2 2,2 M2,2 3,2 3,3 2,3 M3,2 4,2 4,3 3,3 M3,3 4,3 4,4 3,4 M3,1 4,1 4,2 3,2 M2,0 3,0 3,1 2,1 M3,0 4,0 4,1 3,1 M4,0 5,0 5,1 4,1 M4,2 5,2 5,3 4,3 M4,1 5,1 5,2 4,2 M5,1 6,1 6,2 5,2 M5,0 6,0 6,1 5,1 M6,0 7,0 7,1 6,1 ' fill='%23a0aa95'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px top 50%;
+  background-size: 8px auto;
+}
+.cs-select option { background-color: var(--bg); color: var(--text-3); }
+.platform-meta { font-size: 10px; color: var(--text-3); margin-bottom: 2px; }
+
+.add-label { font-size: 12px; color: var(--accent); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.03em; }
+
+/* cs16 checkbox, adapted for category picker (button-style toggle) */
+.cat-picker { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; }
+.cs-checkbox { position: relative; }
+.cs-checkbox input {
+  position: absolute; clip: rect(1px,1px,1px,1px); padding: 0; border: 0; height: 1px; width: 1px; overflow: hidden;
+}
+.cs-checkbox__label {
+  cursor: pointer; display: inline-flex; align-items: center; user-select: none;
+  color: var(--secondary-text); font-size: 14px; line-height: 1;
+}
+.cs-checkbox__label:before {
+  content: ""; display: inline-block; width: 13px; height: 13px;
+  background-color: var(--secondary-bg);
+  border: 1px solid;
+  border-color: var(--border-dark) var(--border-light) var(--border-light) var(--border-dark);
+  margin-right: 8px;
+}
+.cs-checkbox input:checked + .cs-checkbox__label { color: var(--accent); }
+.cs-checkbox input:checked + .cs-checkbox__label:before { background-color: var(--accent); }
+
+.add-btn { width: 100%; padding: 8px; font-size: 14px; margin-top: 4px; text-align: center; }
+
+#finished-toggle {
+  font-size: 12px; color: var(--accent); margin-top: 16px; cursor: pointer;
+  text-align: center; text-decoration: underline; text-underline-offset: 3px;
+}
+#finished-list { margin-top: 8px; display: none; }
+#finished-list.open { display: block; }
+.fin-row {
+  font-size: 12px; color: var(--text-3); padding: 8px; display: flex;
+  justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 8px;
+}
+.fin-left { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.fin-title { color: white; overflow-wrap: anywhere; }
+.check { color: var(--accent); margin-right: 4px; }
+
+#save-note { font-size: 10px; color: var(--text-3); text-align: center; margin-top: 16px; }
+
+.cs-hr { border: none; border-top: 1px solid var(--border-dark); border-bottom: 1px solid var(--border-light); margin: 8px 0; }
+</style>
+</head>
+<body>
+<div id="root">
+  <div class="app-title">PressX.gg</div>
+  <div id="content"><div class="empty">Loading...</div></div>
+</div>
+
+<script>
+(function() {
+  const KEY = 'backlog-queue-v5';
+  const CATS = {
+    me: { label: 'For me', tag: 'tag-me' },
+    learn: { label: 'Learning', tag: 'tag-learn' },
+    content: { label: 'Channel', tag: 'tag-content' },
+    must: { label: 'Must-play', tag: 'tag-must' },
+    try: { label: 'Try & see', tag: 'tag-try' }
+  };
+  const PLATFORMS = {
+    steam: 'Steam',
+    xbox: 'Xbox',
+    playstation: 'PlayStation',
+    epic: 'Epic',
+    nintendo: 'Nintendo',
+    other: 'Other'
+  };
+  let games = [];
+  let finishedOpen = false;
+  let pickedCats = [];
+
+  function load() {
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) games = JSON.parse(raw);
+      games.forEach(g => { if (!Array.isArray(g.categories)) g.categories = g.category ? [g.category] : ['me']; });
+    } catch (e) { console.error('Load failed', e); }
+    render();
+  }
+  function save() {
+    try { localStorage.setItem(KEY, JSON.stringify(games)); }
+    catch (e) { console.error('Save failed', e); }
+  }
+  function addGame(title, period, categories, platform) {
+    if (!title.trim()) return;
+    games.push({ id: Date.now() + Math.random(), title: title.trim(), period: period.trim(), categories: categories.length ? categories : ['me'], platform: platform || '', status: 'queued' });
+    save(); render();
+  }
+  function setStatus(id, status) {
+    const g = games.find(g => g.id === id);
+    if (g) g.status = status;
+    save(); render();
+  }
+  function remove(id) { games = games.filter(g => g.id !== id); save(); render(); }
+  function move(id, dir) {
+    const queued = games.filter(g => g.status === 'queued');
+    const idx = queued.findIndex(g => g.id === id);
+    const j = idx + dir;
+    if (j < 0 || j >= queued.length) return;
+    const a = games.findIndex(g => g.id === queued[idx].id);
+    const b = games.findIndex(g => g.id === queued[j].id);
+    [games[a], games[b]] = [games[b], games[a]];
+    save(); render();
+  }
+  function esc(s) { return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function metaLine(g) {
+    const parts = [];
+    if (g.period) parts.push(esc(g.period));
+    if (g.platform && PLATFORMS[g.platform]) parts.push(PLATFORMS[g.platform]);
+    return parts.length ? parts.join(' &middot; ') : '';
+  }
+  function catTags(categories) {
+    return '<div class="tag-row">' + (categories || []).map(c => {
+      const cat = CATS[c] || CATS.me;
+      return '<span class="tag ' + cat.tag + '">' + cat.label + '</span>';
+    }).join('') + '</div>';
+  }
+
+  function render() {
+    const playing = games.filter(g => g.status === 'playing');
+    const queued = games.filter(g => g.status === 'queued');
+    const finished = games.filter(g => g.status === 'finished');
+    let html = '';
+
+    html += '<div class="section-label">Now Playing' + (playing.length ? ' (' + playing.length + ')' : '') + '</div>';
+    if (playing.length === 0) {
+      html += '<div class="win"><div class="content empty">Nothing active. Start something from the queue below.</div></div>';
+    } else {
+      playing.forEach(g => {
+        html += '<div class="win now-card">' +
+          '<div class="info">' +
+          (metaLine(g) ? '<div class="period">' + metaLine(g) + '</div>' : '') +
+          '<div class="title">' + esc(g.title) + '</div>' +
+          catTags(g.categories) +
+          '</div>' +
+          '<div class="row-btns">' +
+          '<button class="cs-btn mini accent" data-act="finish" data-id="' + g.id + '">Done</button>' +
+          '<button class="cs-btn mini icon-btn" data-act="requeue" data-id="' + g.id + '" title="Back to queue" aria-label="Back to queue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg></button>' +
+          '</div></div>';
+      });
+    }
+
+    html += '<div class="section-label">Queue (' + queued.length + ')</div>';
+    if (queued.length === 0) {
+      html += '<div class="win"><div class="content empty">Queue\'s empty. Add something below.</div></div>';
+    } else {
+      queued.forEach((g, i) => {
+        html += '<div class="win item">' +
+          '<div class="num">' + (i + 1) + '</div>' +
+          '<div class="info">' +
+          (metaLine(g) ? '<div class="period">' + metaLine(g) + '</div>' : '') +
+          '<div class="name">' + esc(g.title) + '</div>' + catTags(g.categories) + '</div>' +
+          '<div class="btns">' +
+          '<button class="cs-btn mini accent" data-act="start" data-id="' + g.id + '">Start</button>' +
+          '<button class="cs-btn mini" data-act="up" data-id="' + g.id + '">&uarr;</button>' +
+          '<button class="cs-btn mini" data-act="down" data-id="' + g.id + '">&darr;</button>' +
+          '<button class="cs-btn mini" data-act="del" data-id="' + g.id + '">&times;</button>' +
+          '</div></div>';
+      });
+    }
+
+    html += '<div class="win"><div class="content" id="add-panel">' +
+      '<div class="add-label">Add a game</div>' +
+      '<input type="text" class="cs-input" id="in-title" placeholder="Title" />' +
+      '<input type="text" class="cs-input" id="in-period" placeholder="Period (e.g. September, Month 3, Q1)" />' +
+      '<select class="cs-select" id="in-platform">' +
+      '<option value="">Platform (optional)</option>' +
+      Object.entries(PLATFORMS).map(([k,v]) => '<option value="' + k + '">' + v + '</option>').join('') +
+      '</select>' +
+      '<div class="cat-picker" id="cat-picker">' +
+      Object.entries(CATS).map(([k,v]) => {
+        const checked = pickedCats.includes(k) ? 'checked' : '';
+        return '<div class="cs-checkbox"><input type="checkbox" id="cat-' + k + '" data-cat="' + k + '" ' + checked + ' /><label class="cs-checkbox__label" for="cat-' + k + '">' + v.label + '</label></div>';
+      }).join('') +
+      '</div>' +
+      '<button class="cs-btn accent add-btn" id="add-btn">Add to queue</button>' +
+      '</div></div>';
+
+    if (finished.length > 0) {
+      html += '<div id="finished-toggle">' + (finishedOpen ? 'Hide' : 'Show') + ' finished (' + finished.length + ')</div>';
+      html += '<div id="finished-list" class="' + (finishedOpen ? 'open' : '') + '">';
+      finished.slice().reverse().forEach(g => {
+        html += '<div class="win fin-row"><div class="fin-left"><span class="fin-title"><span class="check">&check;</span>' + esc(g.title) + '</span>' + catTags(g.categories) + '</div>' +
+          '<button class="cs-btn mini" data-act="restore" data-id="' + g.id + '">Restore</button></div>';
+      });
+      html += '</div>';
+    }
+
+    html += '<div id="save-note">Saved on this device</div>';
+
+    document.getElementById('content').innerHTML = html;
+    attach();
+  }
+
+  function attach() {
+    document.querySelectorAll('[data-act]').forEach(btn => {
+      btn.onclick = () => {
+        const id = Number(btn.dataset.id);
+        const act = btn.dataset.act;
+        if (act === 'start') setStatus(id, 'playing');
+        else if (act === 'finish') setStatus(id, 'finished');
+        else if (act === 'requeue') setStatus(id, 'queued');
+        else if (act === 'restore') setStatus(id, 'queued');
+        else if (act === 'del') remove(id);
+        else if (act === 'up') move(id, -1);
+        else if (act === 'down') move(id, 1);
+      };
+    });
+    document.querySelectorAll('.cat-picker input[type=checkbox]').forEach(el => {
+      el.onchange = () => {
+        const cat = el.dataset.cat;
+        if (el.checked) { if (!pickedCats.includes(cat)) pickedCats.push(cat); }
+        else { pickedCats = pickedCats.filter(c => c !== cat); }
+      };
+    });
+    const addBtn = document.getElementById('add-btn');
+    const titleInput = document.getElementById('in-title');
+    const periodInput = document.getElementById('in-period');
+    const platformInput = document.getElementById('in-platform');
+    if (addBtn) addBtn.onclick = () => {
+      addGame(titleInput.value, periodInput.value, pickedCats.slice(), platformInput.value);
+      pickedCats = [];
+      render();
+    };
+    if (periodInput) periodInput.onkeydown = (e) => { if (e.key === 'Enter') addBtn.click(); };
+    const finToggle = document.getElementById('finished-toggle');
+    if (finToggle) finToggle.onclick = () => { finishedOpen = !finishedOpen; render(); };
+  }
+
+  load();
+})();
+</script>
+</body>
+</html>
