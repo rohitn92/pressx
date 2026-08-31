@@ -246,8 +246,8 @@ html, body {
   let games = [];
   let finishedOpen = false;
   let pickedCats = [];
-  let refreshing = false;
   let editingTimeId = null;
+  let pendingMatch = null;
 
   function load() {
     try {
@@ -267,7 +267,7 @@ html, body {
     games.push(g);
     save(); render();
     fetchThumb(g.id, g.title);
-    fetchPlaytime(g.id, g.title);
+    findPlaytimeMatch(g.id, g.title);
   }
   async function fetchThumb(id, title) {
     try {
@@ -287,30 +287,23 @@ html, body {
     try { return (localStorage.getItem(RAWG_KEY_STORAGE) || '').trim(); }
     catch (e) { return ''; }
   }
-  async function fetchPlaytime(id, title) {
+  function normalizeTitle(s) { return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ''); }
+  async function findPlaytimeMatch(id, title) {
     const apiKey = getRawgKey();
     if (!apiKey) return;
     try {
-      const url = 'https://api.rawg.io/api/games?key=' + encodeURIComponent(apiKey) + '&search=' + encodeURIComponent(title) + '&page_size=1';
+      const url = 'https://api.rawg.io/api/games?key=' + encodeURIComponent(apiKey) + '&search=' + encodeURIComponent(title) + '&page_size=5';
       const res = await fetch(url).then(r => r.json());
-      const hit = res && res.results && res.results[0];
-      const hours = hit && hit.playtime;
-      if (!hours) return;
+      const results = (res && res.results) || [];
+      const target = normalizeTitle(title);
+      const exact = results.find(r => normalizeTitle(r.name) === target && r.playtime);
+      const hit = exact || results.find(r => r.playtime);
+      if (!hit) return;
       const g = games.find(g => g.id === id);
-      if (g) { g.playtime = hours; save(); render(); }
-    } catch (e) { console.error('Playtime fetch failed', e); }
-  }
-  async function refreshAll() {
-    if (refreshing) return;
-    refreshing = true;
-    render();
-    for (const g of games.slice()) {
-      const tasks = [fetchPlaytime(g.id, g.title)];
-      if (!g.thumb) tasks.push(fetchThumb(g.id, g.title));
-      await Promise.all(tasks);
-    }
-    refreshing = false;
-    render();
+      if (!g) return;
+      pendingMatch = { id, name: hit.name, year: (hit.released || '').slice(0, 4), hours: hit.playtime };
+      render();
+    } catch (e) { console.error('Playtime match failed', e); }
   }
   function setStatus(id, status) {
     const g = games.find(g => g.id === id);
@@ -453,8 +446,6 @@ html, body {
       '<div class="platform-meta">RAWG API key (for completion-time lookup) &mdash; free key at rawg.io/apidocs</div>' +
       '<input type="text" class="cs-input" id="in-rawg-key" placeholder="RAWG API key" value="' + esc(getRawgKey()) + '" />' +
       '<button class="cs-btn accent add-btn" id="save-key-btn">Save key</button>' +
-      '<div class="cs-hr"></div>' +
-      '<button class="cs-btn add-btn" id="refresh-btn" ' + (refreshing ? 'disabled' : '') + '>' + (refreshing ? 'Refreshing…' : 'Refresh sourced data') + '</button>' +
       '</div></div>';
 
     html += '<div id="save-note">Saved on this device</div>';
@@ -463,6 +454,35 @@ html, body {
 
     const existingOverlay = document.getElementById('time-modal-overlay');
     if (existingOverlay) existingOverlay.remove();
+    const existingMatchOverlay = document.getElementById('match-modal-overlay');
+    if (existingMatchOverlay) existingMatchOverlay.remove();
+
+    if (pendingMatch && editingTimeId === null) {
+      const pm = pendingMatch;
+      const g = games.find(g => g.id === pm.id);
+      if (g) {
+        html = '<div class="modal-overlay" id="match-modal-overlay">' +
+          '<div class="win modal-box"><div class="content">' +
+          '<div class="add-label">Completion time match</div>' +
+          '<div class="platform-meta">For &ldquo;' + esc(g.title) + '&rdquo;, RAWG matched:</div>' +
+          '<div class="title" style="margin-bottom:8px;">' + esc(pm.name) + (pm.year ? ' (' + pm.year + ')' : '') + ' &mdash; ~' + pm.hours + 'h</div>' +
+          '<div class="modal-actions">' +
+          '<button class="cs-btn" id="match-skip-btn">Skip</button>' +
+          '<button class="cs-btn accent" id="match-use-btn">Use ~' + pm.hours + 'h</button>' +
+          '</div></div></div></div>';
+        document.body.insertAdjacentHTML('beforeend', html);
+        const overlay = document.getElementById('match-modal-overlay');
+        overlay.onclick = (e) => { if (e.target === overlay) { pendingMatch = null; render(); } };
+        document.getElementById('match-skip-btn').onclick = () => { pendingMatch = null; render(); };
+        document.getElementById('match-use-btn').onclick = () => {
+          const target = games.find(g => g.id === pm.id);
+          if (target) { target.playtime = pm.hours; save(); }
+          pendingMatch = null; render();
+        };
+      } else {
+        pendingMatch = null;
+      }
+    }
 
     if (editingTimeId !== null) {
       const g = games.find(g => g.id === editingTimeId);
@@ -549,8 +569,6 @@ html, body {
     if (saveKeyBtn) saveKeyBtn.onclick = () => {
       try { localStorage.setItem(RAWG_KEY_STORAGE, keyInput.value.trim()); } catch (e) { console.error('Save key failed', e); }
     };
-    const refreshBtn = document.getElementById('refresh-btn');
-    if (refreshBtn) refreshBtn.onclick = () => { refreshAll(); };
   }
 
   const thumbFileInput = document.getElementById('thumb-file');
