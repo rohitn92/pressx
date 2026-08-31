@@ -47,9 +47,14 @@ html, body {
 
 .section-grid { display: flex; flex-direction: column; }
 @media (min-width: 700px) {
-  .section-grid { flex-flow: row wrap; gap: 8px; align-items: flex-start; }
-  .section-grid > .win { flex: 1 1 380px; margin-bottom: 0; }
-  .form-panel { max-width: 480px; }
+  .section-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(360px, 1fr));
+    gap: 8px;
+    align-items: start;
+  }
+  .section-grid > .win { margin-bottom: 0; min-width: 0; }
+  .add-btn { max-width: 280px; }
 }
 
 .app-title { font-size: 20px; font-weight: 700; color: var(--accent); letter-spacing: 0.02em; margin: 0 0 12px 4px; }
@@ -78,7 +83,7 @@ html, body {
 .section-label:first-of-type { margin-top: 0; }
 .section-tally { letter-spacing: normal; }
 
-.empty { color: var(--text-3); font-size: 12px; padding: 8px 4px; text-align: center; }
+.empty { color: var(--text-3); font-size: clamp(12px, 8.4px + 0.52vw, 15px); padding: 8px 4px; text-align: center; }
 
 .tag-row { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0; }
 .tag {
@@ -209,7 +214,7 @@ html, body {
 .fin-title { color: white; overflow-wrap: anywhere; }
 .check { color: var(--accent); margin-right: 4px; }
 
-#save-note { font-size: 10px; color: var(--text-3); text-align: center; margin-top: 16px; }
+#save-note { font-size: clamp(10px, 6.4px + 0.52vw, 13px); color: var(--text-3); text-align: center; margin-top: 16px; }
 
 .cs-hr { border: none; border-top: 1px solid var(--border-dark); border-bottom: 1px solid var(--border-light); margin: 8px 0; }
 
@@ -509,7 +514,9 @@ html, body {
       html += '</div>';
     }
 
-    html += '<div class="win form-panel"><div class="content" id="add-panel">' +
+    html += sectionLabel('Options', null, []);
+    html += '<div class="section-grid">';
+    html += '<div class="win"><div class="content" id="add-panel">' +
       '<div class="add-label">Add a game</div>' +
       '<input type="text" class="cs-input" id="in-title" placeholder="Title" />' +
       '<input type="text" class="cs-input" id="in-period" placeholder="Period (e.g. September, Month 3, Q1)" />' +
@@ -526,17 +533,7 @@ html, body {
       '<button class="cs-btn accent add-btn" id="add-btn">Add to queue</button>' +
       '</div></div>';
 
-    if (finished.length > 0) {
-      html += '<div id="finished-toggle">' + (finishedOpen ? 'Hide' : 'Show') + ' finished (' + finished.length + ')</div>';
-      html += '<div id="finished-list" class="' + (finishedOpen ? 'open' : '') + '">';
-      finished.slice().reverse().forEach(g => {
-        html += '<div class="win fin-row"><div class="fin-left"><span class="fin-title"><span class="check">&check;</span>' + esc(g.title) + '</span>' + catTags(g.categories) + '</div>' +
-          '<button class="cs-btn mini" data-act="restore" data-id="' + g.id + '">Restore</button></div>';
-      });
-      html += '</div>';
-    }
-
-    html += '<div class="win form-panel"><div class="content" id="settings-panel">' +
+    html += '<div class="win"><div class="content" id="settings-panel">' +
       '<div class="add-label">Settings</div>' +
       '<div class="platform-meta">RAWG API key (for completion-time lookup) &mdash; free key at rawg.io/apidocs</div>' +
       '<input type="text" class="cs-input" id="in-rawg-key" placeholder="RAWG API key" value="' + esc(getRawgKey()) + '" />' +
@@ -553,6 +550,17 @@ html, body {
       '</div>' +
       (syncStatus ? '<div class="platform-meta" style="margin-top:8px;">' + esc(syncStatus) + '</div>' : '') +
       '</div></div>';
+    html += '</div>';
+
+    if (finished.length > 0) {
+      html += '<div id="finished-toggle">' + (finishedOpen ? 'Hide' : 'Show') + ' finished (' + finished.length + ')</div>';
+      html += '<div id="finished-list" class="' + (finishedOpen ? 'open' : '') + '">';
+      finished.slice().reverse().forEach(g => {
+        html += '<div class="win fin-row"><div class="fin-left"><span class="fin-title"><span class="check">&check;</span>' + esc(g.title) + '</span>' + catTags(g.categories) + '</div>' +
+          '<button class="cs-btn mini" data-act="restore" data-id="' + g.id + '">Restore</button></div>';
+      });
+      html += '</div>';
+    }
 
     html += '<div id="save-note">Saved on this device</div>';
 
