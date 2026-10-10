@@ -231,6 +231,23 @@ html, body {
   color: inherit; background: none; border: 0; padding: 0; font: inherit; font-size: 10px;
 }
 .period-badge:active { color: var(--accent); }
+.title-btn {
+  display: block; max-width: 100%; text-align: left; white-space: normal;
+  cursor: pointer; color: inherit; background: none; border: 0; border-radius: 0; padding: 0; margin: 0;
+  font: inherit; line-height: inherit; overflow-wrap: anywhere; -webkit-appearance: none; appearance: none;
+}
+.title-btn:active { color: var(--accent); }
+
+/* drag to reorder (Now Playing / Queue cards) */
+.section-grid > .win[data-gid] {
+  cursor: grab; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
+}
+.drag-placeholder { opacity: 0.35; }
+.drag-clone {
+  position: fixed; z-index: 200; margin: 0 !important; pointer-events: none;
+  opacity: 0.95; box-shadow: 0 6px 18px rgba(0,0,0,0.5); transform: scale(1.02);
+}
+body.is-dragging, body.is-dragging * { cursor: grabbing !important; -webkit-user-select: none; user-select: none; }
 
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(0,0,0,0.6);
@@ -275,6 +292,7 @@ html, body {
   let pickedCats = [];
   let editingTimeId = null;
   let editingPeriodId = null;
+  let editingTitleId = null;
   let pendingMatch = null;
   let syncing = false;
   let syncStatus = '';
@@ -411,7 +429,7 @@ html, body {
     [games[a], games[b]] = [games[b], games[a]];
     save(); render();
   }
-  function esc(s) { return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+  function esc(s) { return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
   function periodBadge(g) {
     const label = g.period ? esc(g.period) : 'Add period';
     return '<button type="button" class="period-badge" data-act="edit-period" data-id="' + g.id + '" title="Tap to edit period">' + label + '</button>';
@@ -466,6 +484,7 @@ html, body {
   }
 
   function render() {
+    if (drag) teardownDrag(); // e.g. an async thumbnail fetch re-rendering mid-drag
     const playing = games.filter(g => g.status === 'playing');
     const queued = games.filter(g => g.status === 'queued');
     const finished = games.filter(g => g.status === 'finished');
@@ -475,13 +494,13 @@ html, body {
     if (playing.length === 0) {
       html += '<div class="win"><div class="content empty">Nothing active. Start something from the queue below.</div></div>';
     } else {
-      html += '<div class="section-grid">';
+      html += '<div class="section-grid" data-list="playing">';
       playing.forEach(g => {
-        html += '<div class="win now-card">' +
+        html += '<div class="win now-card" data-gid="' + g.id + '">' +
           thumbHtml(g) +
           '<div class="info">' +
           periodLine(g) +
-          '<div class="title">' + esc(g.title) + '</div>' +
+          '<div class="title"><button type="button" class="title-btn" data-act="edit-title" data-id="' + g.id + '" title="Tap to edit title">' + esc(g.title) + '</button></div>' +
           catTags(g.categories) +
           '</div>' +
           '<div class="row-btns">' +
@@ -496,14 +515,14 @@ html, body {
     if (queued.length === 0) {
       html += '<div class="win"><div class="content empty">Queue\'s empty. Add something below.</div></div>';
     } else {
-      html += '<div class="section-grid">';
+      html += '<div class="section-grid" data-list="queued">';
       queued.forEach((g, i) => {
-        html += '<div class="win item">' +
+        html += '<div class="win item" data-gid="' + g.id + '">' +
           '<div class="num">' + (i + 1) + '</div>' +
           thumbHtml(g) +
           '<div class="info">' +
           periodLine(g) +
-          '<div class="name">' + esc(g.title) + '</div>' + catTags(g.categories) + '</div>' +
+          '<div class="name"><button type="button" class="title-btn" data-act="edit-title" data-id="' + g.id + '" title="Tap to edit title">' + esc(g.title) + '</button></div>' + catTags(g.categories) + '</div>' +
           '<div class="btns">' +
           '<button class="cs-btn mini accent" data-act="start" data-id="' + g.id + '">Start</button>' +
           '<button class="cs-btn mini" data-act="up" data-id="' + g.id + '">&uarr;</button>' +
@@ -570,10 +589,12 @@ html, body {
     if (existingOverlay) existingOverlay.remove();
     const existingPeriodOverlay = document.getElementById('period-modal-overlay');
     if (existingPeriodOverlay) existingPeriodOverlay.remove();
+    const existingTitleOverlay = document.getElementById('title-modal-overlay');
+    if (existingTitleOverlay) existingTitleOverlay.remove();
     const existingMatchOverlay = document.getElementById('match-modal-overlay');
     if (existingMatchOverlay) existingMatchOverlay.remove();
 
-    if (pendingMatch && editingTimeId === null && editingPeriodId === null) {
+    if (pendingMatch && editingTimeId === null && editingPeriodId === null && editingTitleId === null) {
       const pm = pendingMatch;
       const g = games.find(g => g.id === pm.id);
       if (g) {
@@ -650,6 +671,31 @@ html, body {
       }
     }
 
+    if (editingTitleId !== null) {
+      const g = games.find(g => g.id === editingTitleId);
+      if (g) {
+        html = '<div class="modal-overlay" id="title-modal-overlay">' +
+          '<div class="win modal-box"><div class="content">' +
+          '<div class="add-label">Title</div>' +
+          '<input type="text" class="cs-input" id="in-title-value" placeholder="Game title" value="' + esc(g.title) + '" />' +
+          '<div class="modal-actions">' +
+          '<button class="cs-btn" id="title-cancel-btn">Cancel</button>' +
+          '<button class="cs-btn accent" id="title-save-btn">Save</button>' +
+          '</div></div></div></div>';
+        document.body.insertAdjacentHTML('beforeend', html);
+        const overlay = document.getElementById('title-modal-overlay');
+        const input = document.getElementById('in-title-value');
+        input.focus(); input.select();
+        overlay.onclick = (e) => { if (e.target === overlay) closeTitleModal(); };
+        document.getElementById('title-cancel-btn').onclick = closeTitleModal;
+        document.getElementById('title-save-btn').onclick = () => saveTitleModal(input.value);
+        input.onkeydown = (e) => {
+          if (e.key === 'Enter') saveTitleModal(input.value);
+          else if (e.key === 'Escape') closeTitleModal();
+        };
+      }
+    }
+
     attach();
   }
   function closeTimeModal() { editingTimeId = null; render(); }
@@ -662,6 +708,14 @@ html, body {
       save();
     }
     editingTimeId = null;
+    render();
+  }
+  function closeTitleModal() { editingTitleId = null; render(); }
+  function saveTitleModal(value) {
+    const g = games.find(g => g.id === editingTitleId);
+    const trimmed = (value || '').trim();
+    if (g && trimmed) { g.title = trimmed; save(); }
+    editingTitleId = null;
     render();
   }
   function closePeriodModal() { editingPeriodId = null; render(); }
@@ -684,8 +738,9 @@ html, body {
         else if (act === 'del') remove(id);
         else if (act === 'up') move(id, -1);
         else if (act === 'down') move(id, 1);
-        else if (act === 'edit-time') { editingTimeId = id; editingPeriodId = null; pendingMatch = null; render(); }
-        else if (act === 'edit-period') { editingPeriodId = id; editingTimeId = null; pendingMatch = null; render(); }
+        else if (act === 'edit-time') { editingTimeId = id; editingPeriodId = null; editingTitleId = null; pendingMatch = null; render(); }
+        else if (act === 'edit-period') { editingPeriodId = id; editingTimeId = null; editingTitleId = null; pendingMatch = null; render(); }
+        else if (act === 'edit-title') { editingTitleId = id; editingTimeId = null; editingPeriodId = null; pendingMatch = null; render(); }
         else if (act === 'upload') {
           const fileInput = document.getElementById('thumb-file');
           fileInput.dataset.targetId = id;
@@ -740,6 +795,149 @@ html, body {
     const pullBtn = document.getElementById('pull-btn');
     if (pullBtn) pullBtn.onclick = () => { persistSyncInputs(); pullFromCloud(); };
   }
+
+  // ---- drag to reorder (Now Playing / Queue) ----
+  // Mouse: press and move past a small threshold. Touch: long-press, then drag
+  // (so a normal swipe still scrolls). Cards only reorder within their own list.
+  const CARD_SEL = '.section-grid > .win[data-gid]';
+  const NO_DRAG_SEL = '.cs-btn, input, select, textarea, a';
+  const LONG_PRESS_MS = 350;
+  let drag = null;
+  let press = null;
+  let suppressClick = false;
+
+  function cardFromTarget(t) {
+    if (!t || !t.closest) return null;
+    const card = t.closest(CARD_SEL);
+    return card && !t.closest(NO_DRAG_SEL) ? card : null;
+  }
+  function beginDrag(card, x, y) {
+    const rect = card.getBoundingClientRect();
+    const clone = card.cloneNode(true);
+    clone.removeAttribute('data-gid');
+    clone.classList.add('drag-clone');
+    clone.style.width = rect.width + 'px';
+    clone.style.left = rect.left + 'px';
+    clone.style.top = rect.top + 'px';
+    document.body.appendChild(clone);
+    card.classList.add('drag-placeholder');
+    document.body.classList.add('is-dragging');
+    drag = { card, grid: card.parentElement, clone, offX: x - rect.left, offY: y - rect.top, startX: x, startY: y, x, y, moved: false, raf: 0 };
+    drag.raf = requestAnimationFrame(autoScroll);
+  }
+  function hoverReorder() {
+    const { card, grid, clone, x, y } = drag;
+    clone.style.left = (x - drag.offX) + 'px';
+    clone.style.top = (y - drag.offY) + 'px';
+    const el = document.elementFromPoint(x, y);
+    const target = el && el.closest ? el.closest(CARD_SEL) : null;
+    if (!target || target === card || target.parentElement !== grid) return;
+    const rect = target.getBoundingClientRect();
+    const kids = Array.from(grid.children);
+    const forward = kids.indexOf(card) < kids.indexOf(target);
+    const multiCol = rect.width < grid.getBoundingClientRect().width * 0.8;
+    const past = multiCol
+      ? (forward ? x > rect.left + rect.width / 2 : x < rect.left + rect.width / 2)
+      : (forward ? y > rect.top + rect.height / 2 : y < rect.top + rect.height / 2);
+    if (!past) return;
+    grid.insertBefore(card, forward ? target.nextSibling : target);
+  }
+  function moveDrag(x, y) {
+    drag.x = x; drag.y = y;
+    if (!drag.moved && Math.hypot(x - drag.startX, y - drag.startY) > 4) drag.moved = true;
+    hoverReorder();
+  }
+  function autoScroll() {
+    if (!drag) return;
+    const edge = 70;
+    let dy = 0;
+    if (drag.y < edge) dy = -Math.ceil((edge - drag.y) / 6);
+    else if (drag.y > window.innerHeight - edge) dy = Math.ceil((drag.y - (window.innerHeight - edge)) / 6);
+    if (dy) { window.scrollBy(0, dy); hoverReorder(); }
+    drag.raf = requestAnimationFrame(autoScroll);
+  }
+  function teardownDrag() {
+    cancelAnimationFrame(drag.raf);
+    drag.clone.remove();
+    drag.card.classList.remove('drag-placeholder');
+    document.body.classList.remove('is-dragging');
+    const d = drag;
+    drag = null;
+    return d;
+  }
+  function endDrag(commit) {
+    const d = teardownDrag();
+    if (d.moved) {
+      suppressClick = true;
+      setTimeout(() => { suppressClick = false; }, 50);
+    }
+    if (commit && d.card.isConnected) {
+      const status = d.grid.dataset.list;
+      const ids = Array.from(d.grid.children).map(c => Number(c.dataset.gid));
+      const slots = [];
+      games.forEach((g, i) => { if (g.status === status) slots.push(i); });
+      const byId = new Map(games.map(g => [g.id, g]));
+      const ordered = ids.map(id => byId.get(id)).filter(Boolean);
+      if (ordered.length === slots.length) {
+        slots.forEach((gi, k) => { games[gi] = ordered[k]; });
+        save();
+      }
+    }
+    render();
+  }
+  function cancelPress() {
+    if (press) { clearTimeout(press.timer); press = null; }
+  }
+
+  const contentEl = document.getElementById('content');
+  contentEl.addEventListener('mousedown', (e) => {
+    if (e.button !== 0 || drag) return;
+    const card = cardFromTarget(e.target);
+    if (card) press = { card, startX: e.clientX, startY: e.clientY, kind: 'mouse' };
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (drag) { e.preventDefault(); moveDrag(e.clientX, e.clientY); return; }
+    if (press && press.kind === 'mouse' && Math.hypot(e.clientX - press.startX, e.clientY - press.startY) > 5) {
+      const p = press; press = null;
+      beginDrag(p.card, p.startX, p.startY);
+      moveDrag(e.clientX, e.clientY);
+    }
+  });
+  document.addEventListener('mouseup', () => {
+    if (drag) endDrag(true);
+    else if (press && press.kind === 'mouse') cancelPress();
+  });
+
+  contentEl.addEventListener('touchstart', (e) => {
+    if (drag || e.touches.length !== 1) { cancelPress(); return; }
+    const card = cardFromTarget(e.target);
+    if (!card) return;
+    const t = e.touches[0];
+    cancelPress();
+    press = { card, startX: t.clientX, startY: t.clientY, kind: 'touch' };
+    press.timer = setTimeout(() => {
+      const p = press; press = null;
+      if (p && p.card.isConnected) beginDrag(p.card, p.startX, p.startY);
+    }, LONG_PRESS_MS);
+  }, { passive: true });
+  document.addEventListener('touchmove', (e) => {
+    const t = e.touches[0];
+    if (drag) { e.preventDefault(); moveDrag(t.clientX, t.clientY); return; }
+    if (press && press.kind === 'touch' && Math.hypot(t.clientX - press.startX, t.clientY - press.startY) > 8) cancelPress();
+  }, { passive: false });
+  function touchDone() {
+    if (drag) endDrag(true);
+    else cancelPress();
+  }
+  document.addEventListener('touchend', touchDone);
+  document.addEventListener('touchcancel', touchDone);
+  contentEl.addEventListener('contextmenu', (e) => {
+    if (drag || (press && press.kind === 'touch')) e.preventDefault();
+  });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && drag) endDrag(false); });
+  document.addEventListener('click', (e) => {
+    if (suppressClick) { e.stopPropagation(); e.preventDefault(); suppressClick = false; }
+  }, true);
 
   const thumbFileInput = document.getElementById('thumb-file');
   thumbFileInput.onchange = async () => {
