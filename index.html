@@ -243,6 +243,10 @@ html, body {
 .section-grid > .win[data-gid] {
   cursor: grab; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
 }
+/* View setting: hide tags (class toggled on <body>, so no re-render needed) */
+body.hide-tags .tag-row { display: none; }
+body.hide-tags .now-card .title, body.hide-tags .item .name { margin-bottom: 0; }
+
 .drag-handle {
   display: inline-flex; align-items: center; justify-content: center;
   padding: 0 4px; color: var(--handle); cursor: grab; touch-action: none;
@@ -279,6 +283,7 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; -webkit-user
   const RAWG_KEY_STORAGE = 'backlog-rawg-key';
   const JSONBIN_KEY_STORAGE = 'backlog-jsonbin-key';
   const JSONBIN_ID_STORAGE = 'backlog-jsonbin-id';
+  const VIEW_TAGS_STORAGE = 'backlog-view-tags'; // device-local view preference, never synced
   const CATS = {
     me: { label: 'For me', tag: 'tag-me' },
     learn: { label: 'Learning', tag: 'tag-learn' },
@@ -304,7 +309,11 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; -webkit-user
   let syncing = false;
   let syncStatus = '';
 
+  let showTags = true;
+  function applyView() { document.body.classList.toggle('hide-tags', !showTags); }
   function load() {
+    try { showTags = localStorage.getItem(VIEW_TAGS_STORAGE) !== '0'; } catch (e) {}
+    applyView();
     try {
       const raw = localStorage.getItem(KEY);
       if (raw) games = JSON.parse(raw);
@@ -567,6 +576,12 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; -webkit-user
       '</div>' +
       (syncStatus ? '<div class="platform-meta" style="margin-top:8px;">' + esc(syncStatus) + '</div>' : '') +
       '</div></div>';
+
+    html += '<div class="win"><div class="content" id="view-panel">' +
+      '<div class="add-label">View</div>' +
+      '<div class="cat-picker"><div class="cs-checkbox"><input type="checkbox" id="view-tags" ' + (showTags ? 'checked' : '') + ' /><label class="cs-checkbox__label" for="view-tags">Show tags</label></div></div>' +
+      '<div class="platform-meta">Display preference for this device only &mdash; not included in cloud sync.</div>' +
+      '</div></div>';
     html += '</div>';
 
     if (finished.length > 0) {
@@ -764,6 +779,12 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; -webkit-user
     if (periodInput) periodInput.onkeydown = (e) => { if (e.key === 'Enter') addBtn.click(); };
     const finToggle = document.getElementById('finished-toggle');
     if (finToggle) finToggle.onclick = () => { finishedOpen = !finishedOpen; render(); };
+    const viewTags = document.getElementById('view-tags');
+    if (viewTags) viewTags.onchange = () => {
+      showTags = viewTags.checked;
+      try { localStorage.setItem(VIEW_TAGS_STORAGE, showTags ? '1' : '0'); } catch (e) { console.error('Save view failed', e); }
+      applyView();
+    };
     const saveKeyBtn = document.getElementById('save-key-btn');
     const keyInput = document.getElementById('in-rawg-key');
     if (saveKeyBtn) saveKeyBtn.onclick = () => {
