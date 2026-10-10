@@ -26,6 +26,7 @@
   --text-3: #a0aa95;
   --border-light: #8c9284;
   --border-dark: #292c21;
+  --handle: #384332;
   --outline: #000;
 }
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; margin: 0; padding: 0; }
@@ -242,6 +243,12 @@ html, body {
 .section-grid > .win[data-gid] {
   cursor: grab; -webkit-touch-callout: none; -webkit-user-select: none; user-select: none;
 }
+.drag-handle {
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0 4px; color: var(--handle); cursor: grab; touch-action: none;
+  filter: drop-shadow(-1px -1px 0 rgba(140,146,132,0.45)) drop-shadow(1px 1px 0 rgba(41,44,33,0.5));
+}
+.drag-handle svg { display: block; fill: currentColor; }
 .drag-placeholder { opacity: 0.35; }
 .drag-clone {
   position: fixed; z-index: 200; margin: 0 !important; pointer-events: none;
@@ -419,16 +426,6 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; -webkit-user
     save(); render();
   }
   function remove(id) { games = games.filter(g => g.id !== id); save(); render(); }
-  function move(id, dir) {
-    const queued = games.filter(g => g.status === 'queued');
-    const idx = queued.findIndex(g => g.id === id);
-    const j = idx + dir;
-    if (j < 0 || j >= queued.length) return;
-    const a = games.findIndex(g => g.id === queued[idx].id);
-    const b = games.findIndex(g => g.id === queued[j].id);
-    [games[a], games[b]] = [games[b], games[a]];
-    save(); render();
-  }
   function esc(s) { return (s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
   function periodBadge(g) {
     const label = g.period ? esc(g.period) : 'Add period';
@@ -440,6 +437,7 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; -webkit-user
     parts.push(timeBadge(g));
     return '<div class="period">' + parts.join(' &middot; ') + '</div>';
   }
+  const DRAG_HANDLE = '<span class="drag-handle" title="Drag to reorder" aria-hidden="true"><svg width="9" height="15" viewBox="0 0 9 15" shape-rendering="crispEdges"><rect x="0" y="0" width="3" height="3"/><rect x="6" y="0" width="3" height="3"/><rect x="0" y="6" width="3" height="3"/><rect x="6" y="6" width="3" height="3"/><rect x="0" y="12" width="3" height="3"/><rect x="6" y="12" width="3" height="3"/></svg></span>';
   function thumbHtml(g) {
     if (g.thumb) return '<button type="button" class="thumb-wrap" data-act="upload" data-id="' + g.id + '" title="Replace cover image" aria-label="Replace cover image"><img class="thumb" src="' + esc(g.thumb) + '" alt="" onerror="this.remove()" /></button>';
     return '<button type="button" class="thumb-placeholder" data-act="upload" data-id="' + g.id + '" title="Add cover image" aria-label="Add cover image">+</button>';
@@ -506,6 +504,7 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; -webkit-user
           '<div class="row-btns">' +
           '<button class="cs-btn mini accent" data-act="finish" data-id="' + g.id + '">Done</button>' +
           '<button class="cs-btn mini icon-btn" data-act="requeue" data-id="' + g.id + '" title="Back to queue" aria-label="Back to queue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"></polyline><path d="M20 20v-7a4 4 0 0 0-4-4H4"></path></svg></button>' +
+          DRAG_HANDLE +
           '</div></div>';
       });
       html += '</div>';
@@ -524,10 +523,9 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; -webkit-user
           periodLine(g) +
           '<div class="name"><button type="button" class="title-btn" data-act="edit-title" data-id="' + g.id + '" title="Tap to edit title">' + esc(g.title) + '</button></div>' + catTags(g.categories) + '</div>' +
           '<div class="btns">' +
-          '<button class="cs-btn mini accent" data-act="start" data-id="' + g.id + '">Start</button>' +
-          '<button class="cs-btn mini" data-act="up" data-id="' + g.id + '">&uarr;</button>' +
-          '<button class="cs-btn mini" data-act="down" data-id="' + g.id + '">&darr;</button>' +
           '<button class="cs-btn mini" data-act="del" data-id="' + g.id + '">&times;</button>' +
+          '<button class="cs-btn mini accent" data-act="start" data-id="' + g.id + '">Start</button>' +
+          DRAG_HANDLE +
           '</div></div>';
       });
       html += '</div>';
@@ -736,8 +734,6 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; -webkit-user
         else if (act === 'requeue') setStatus(id, 'queued');
         else if (act === 'restore') setStatus(id, 'queued');
         else if (act === 'del') remove(id);
-        else if (act === 'up') move(id, -1);
-        else if (act === 'down') move(id, 1);
         else if (act === 'edit-time') { editingTimeId = id; editingPeriodId = null; editingTitleId = null; pendingMatch = null; render(); }
         else if (act === 'edit-period') { editingPeriodId = id; editingTimeId = null; editingTitleId = null; pendingMatch = null; render(); }
         else if (act === 'edit-title') { editingTitleId = id; editingTimeId = null; editingPeriodId = null; pendingMatch = null; render(); }
@@ -914,6 +910,7 @@ body.is-dragging, body.is-dragging * { cursor: grabbing !important; -webkit-user
     if (!card) return;
     const t = e.touches[0];
     cancelPress();
+    if (e.target.closest('.drag-handle')) { beginDrag(card, t.clientX, t.clientY); return; }
     press = { card, startX: t.clientX, startY: t.clientY, kind: 'touch' };
     press.timer = setTimeout(() => {
       const p = press; press = null;
